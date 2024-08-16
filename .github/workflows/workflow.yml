@@ -1,0 +1,65 @@
+name: Create Amazon EKS
+
+on:
+  workflow_dispatch:
+    inputs:
+      clusterName:
+        description: ' The name of your EKS cluster'
+        required: true
+      region:
+        description: 'The AWS region where the cluster will be deployed'
+        required: true
+      version:
+        description: 'EKS version'
+        required: true
+      clusterRole:
+        description: 'The Role of your EKS cluster'
+        required: true
+      subnet01:
+        description: 'Subnet 1 ID'
+        required: true
+      subnet02:
+        description: 'Subnet 2 ID'
+        required: true
+      nodeGroupName:
+        description: 'The Name of NodeGroup'
+        required: true
+      nodeGroupRole:
+        description: 'The ARN of NodeGroup Role'
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws-region: us-east-1
+          
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+     # update the context to the EKS cluster of ACK
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name karpenter-demo --region us-east-1
+
+      - name: Create new EKS Cluster thgrough ACK
+        run: |
+          export CLUSTER_NAME=${{ github.event.inputs.clusterName }}
+          export VERSION=${{ github.event.inputs.version }}
+          export REGION=${{ github.event.inputs.region }}
+          export CLUSTER_ROLE=${{ github.event.inputs.clusterRole }}
+          export SUBNET_01=${{ github.event.inputs.subnet01 }}
+          export SUBNET_02=${{ github.event.inputs.subnet02 }}
+          export NODEGROUP_NAME=${{ github.event.inputs.nodeGroupName }}
+          export NODEGROUP_ROLE=${{ github.event.inputs.nodeGroupRole }}
+          envsubst < ack/cluster.yaml | kubectl apply -f - 
